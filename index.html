@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Calculadora de actualización: IPC y CAC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    --bg: #E9EEF1; --panel: #F8FAFB; --ink: #12222E; --muted: #5B6B77; --line: #CBD5DC;
+    --accent: #0B6E6E; --accent-ink: #FFFFFF; --warn: #A4402B;
+    --res-bg: #12222E; --res-ink: #E9EEF1; --res-line: #4FC3BE;
+    --display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+    --body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0E1920; --panel: #15252E; --ink: #E6EEF2; --muted: #93A5B1; --line: #28404C;
+      --accent: #4FC3BE; --accent-ink: #06201F; --warn: #E58A74; --res-bg: #0A1318;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0E1920; --panel: #15252E; --ink: #E6EEF2; --muted: #93A5B1; --line: #28404C;
+    --accent: #4FC3BE; --accent-ink: #06201F; --warn: #E58A74; --res-bg: #0A1318;
+  }
+  html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+  body { margin: 0; min-height: 100%; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.5; }
+  main { max-width: 600px; margin: 0 auto; padding: 28px 18px 48px; }
+  h1 { font-family: var(--display); font-weight: 700; font-size: clamp(1.7rem, 6vw, 2.3rem); line-height: 1.1; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+
+  .tabs { display: flex; gap: 4px; padding: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 14px; }
+  .tabs button { flex: 1; border: 0; background: transparent; color: var(--muted); font: 500 0.95rem var(--body); padding: 10px 6px; border-radius: 9px; cursor: pointer; }
+  .tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+  .tabs button:disabled { opacity: .4; cursor: not-allowed; }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+  .block { margin-bottom: 16px; }
+  .block:last-child { margin-bottom: 0; }
+  .block > .t { font-size: 0.85rem; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
+  .amount { display: grid; grid-template-columns: 72px 1fr; gap: 8px; }
+  .when { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; }
+  input, select {
+    width: 100%; box-sizing: border-box; font: 500 1.05rem var(--body); color: var(--ink);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 11px 12px;
+    font-variant-numeric: tabular-nums; min-height: 46px;
+  }
+  option:disabled { color: var(--muted); }
+  input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .swap { display: flex; justify-content: center; margin: -4px 0 12px; }
+  .swap button { background: transparent; color: var(--accent); border: 1px solid var(--line); border-radius: 20px; padding: 6px 14px; font: 500 0.85rem var(--body); cursor: pointer; }
+
+  .result { margin-top: 18px; background: var(--res-bg); color: var(--res-ink); border-radius: 14px; padding: 22px 20px; }
+  .lbl { font-size: 0.88rem; opacity: 0.8; }
+  .big { font-family: var(--display); font-weight: 700; font-size: clamp(2rem, 9vw, 3rem); line-height: 1.1; margin: 4px 0 6px; word-break: break-word; font-variant-numeric: tabular-nums; }
+  .diff { font-size: 0.9rem; opacity: 0.8; margin-bottom: 16px; font-variant-numeric: tabular-nums; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+  .stats div { font-size: 0.78rem; opacity: 0.8; }
+  .stats b { display: block; font-size: 1rem; font-weight: 600; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .chart-lbl { font-size: 0.8rem; opacity: 0.8; margin-bottom: 4px; display: flex; justify-content: space-between; gap: 8px; }
+  .chart svg { display: block; width: 100%; height: 76px; }
+  .power { margin-top: 16px; font-size: 0.85rem; opacity: 0.92; }
+  .bar { height: 10px; border-radius: 6px; background: rgba(255,255,255,0.18); overflow: hidden; margin-top: 6px; }
+  .bar i { display: block; height: 100%; background: var(--res-line); border-radius: 6px; transition: width .35s ease; }
+  .prov { margin-top: 14px; font-size: 0.82rem; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,0.1); }
+  .copy { margin-top: 16px; background: transparent; color: inherit; border: 1px solid currentColor; border-radius: 9px; padding: 9px 14px; font: 500 0.9rem var(--body); cursor: pointer; opacity: 0.9; }
+  .error { color: var(--warn); font-size: 0.9rem; margin: 16px 2px 0; }
+  .empty { margin-top: 18px; padding: 18px; border: 1px dashed var(--line); border-radius: 14px; color: var(--muted); text-align: center; }
+  .meta { font-size: 0.82rem; color: var(--muted); margin: 14px 2px 0; }
+  .note { font-size: 0.8rem; color: var(--muted); margin-top: 8px; }
+  [hidden] { display: none !important; }
+  @media (max-width: 420px) { .stats { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Calculadora de actualización</h1>
+  <p class="sub">Llevá un monto de un mes a otro con la inflación (IPC) o con el costo de la construcción (CAC).</p>
+
+  <div class="tabs" role="tablist" aria-label="Índice">
+    <button role="tab" id="t-ipc" aria-selected="true" data-mode="ipc">Inflación (IPC)</button>
+    <button role="tab" id="t-cac" aria-selected="false" data-mode="cac">Construcción (CAC)</button>
+  </div>
+
+  <section class="panel">
+    <div class="block" id="serie-block" hidden>
+      <div class="t">Serie del CAC</div>
+      <select id="serie" aria-label="Serie del CAC">
+        <option value="general">Costo de construcción (general)</option>
+        <option value="materiales">Materiales</option>
+        <option value="mano_obra">Mano de obra</option>
+      </select>
+    </div>
+
+    <div class="block">
+      <div class="t">Monto</div>
+      <div class="amount">
+        <input id="cur" type="text" value="ARS" aria-label="Moneda" maxlength="4">
+        <input id="amount" type="text" inputmode="decimal" value="100000" autocomplete="off" aria-label="Monto">
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="t">en</div>
+      <div class="when">
+        <select id="m0" aria-label="Mes inicial"></select>
+        <select id="y0" aria-label="Año inicial"></select>
+      </div>
+    </div>
+
+    <div class="swap"><button type="button" id="swap">Invertir fechas</button></div>
+
+    <div class="block">
+      <div class="t">equivale aproximadamente a, en</div>
+      <div class="when">
+        <select id="m1" aria-label="Mes final"></select>
+        <select id="y1" aria-label="Año final"></select>
+      </div>
+    </div>
+  </section>
+
+  <div id="out"></div>
+  <p class="meta" id="meta"></p>
+  <p class="note" id="note"></p>
+</main>
+
+<!--EMBED-->
+<script>
+(function () {
+  var MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  var SERIE_LABEL = { general: "Costo de construcción", materiales: "Materiales", mano_obra: "Mano de obra" };
+  var $ = function (id) { return document.getElementById(id); };
+  var data = { ipc: null, cac: null };
+  var mode = "ipc";
+  var lastText = "";
+
+  /* ---------- datos ---------- */
+  function arr() {
+    if (mode === "ipc") return data.ipc.values;
+    return data.cac.series[$("serie").value];
+  }
+  function startAbs() { var p = data[mode].start.split("-"); return +p[0] * 12 + (+p[1]) - 1; }
+  function lastAbs() { return startAbs() + arr().length - 1; }
+  function idx(y, m) { return y * 12 + m - 1 - startAbs(); }
+  function label(y, m) { return MESES[m - 1] + " de " + y; }
+  function key(y, m) { return y + "-" + (m < 10 ? "0" : "") + m; }
+
+  /* ---------- números ---------- */
+  function parseNum(s) {
+    s = String(s == null ? "" : s).trim().replace(/\s/g, "").replace(/[^\d.,\-+]/g, "");
+    if (!s) return NaN;
+    var hasC = s.indexOf(",") > -1, hasD = s.indexOf(".") > -1;
+    if (hasC && hasD) {
+      if (s.lastIndexOf(",") > s.lastIndexOf(".")) s = s.replace(/\./g, "").replace(",", ".");
+      else s = s.replace(/,/g, "");
+    } else if (hasC) { s = s.replace(",", "."); }
+    else if (hasD && /^-?\d{1,3}(\.\d{3})+$/.test(s)) { s = s.replace(/\./g, ""); }
+    var n = Number(s);
+    return isFinite(n) ? n : NaN;
+  }
+  function fmt(n, d) { return new Intl.NumberFormat("es-AR", { minimumFractionDigits: d, maximumFractionDigits: d }).format(n); }
+
+  /* ---------- selectores ---------- */
+  function fillYears(sel, val) {
+    var y0 = Math.floor(startAbs() / 12), y1 = Math.floor(lastAbs() / 12), h = "";
+    for (var y = y0; y <= y1; y++) h += '<option value="' + y + '">' + y + "</option>";
+    sel.innerHTML = h; sel.value = String(val);
+  }
+  function fillMonths(sel, year, val) {
+    var h = "";
+    for (var m = 1; m <= 12; m++) {
+      var i = idx(year, m), off = i < 0 || i >= arr().length;
+      h += '<option value="' + m + '"' + (off ? " disabled" : "") + ">" + MESES[m - 1] + "</option>";
+    }
+    sel.innerHTML = h;
+    var j = idx(year, val);
+    if (j < 0) val = (startAbs() % 12) + 1; else if (j >= arr().length) val = (lastAbs() % 12) + 1;
+    sel.value = String(val);
+  }
+  function setSide(s, abs) {
+    abs = Math.max(startAbs(), Math.min(lastAbs(), abs));
+    fillYears($("y" + s), Math.floor(abs / 12));
+    fillMonths($("m" + s), Math.floor(abs / 12), (abs % 12) + 1);
+  }
+  function getAbs(s) { return +$("y" + s).value * 12 + (+$("m" + s).value) - 1; }
+
+  /* ---------- pie de página según el índice ---------- */
+  function fechaCorta(iso) {
+    if (!iso) return "";
+    var p = iso.split("-");
+    return +p[2] + " de " + MESES[+p[1] - 1] + " de " + p[0];
+  }
+  function updateMeta() {
+    var d = data[mode], n = arr().length, lastIdx = startAbs() + n - 1;
+    var txt = "Datos hasta " + label(Math.floor(lastIdx / 12), (lastIdx % 12) + 1);
+    if (d.updated) txt += " · actualizado el " + fechaCorta(d.updated);
+    $("meta").textContent = txt + ".";
+    if (mode === "ipc") {
+      $("note").textContent = "IPC nivel general nacional. Desde diciembre 2016 son datos del INDEC (base dic 2016 = 100), que se agregan solos cuando se publican; antes, la serie histórica de la planilla original. Valor actualizado = monto × IPC del mes final ÷ IPC del mes inicial.";
+    } else {
+      $("note").textContent = "Indicador de la Cámara Argentina de la Construcción (variación del costo de un edificio tipo), publicado por Cifras Online; base dic 2014 = 100. La Cámara aclara que es un indicador estadístico y que cualquier otro uso es responsabilidad de quien lo aplica. Verificá siempre qué índice y qué mes exige tu contrato.";
+    }
+  }
+
+  /* ---------- cálculo y resultado ---------- */
+  function render() {
+    var out = $("out"), a = arr();
+    var amt = parseNum($("amount").value);
+    if (isNaN(amt)) { out.innerHTML = '<p class="empty">Ingresá el monto para ver el resultado.</p>'; return; }
+    var y0 = +$("y0").value, m0 = +$("m0").value, y1 = +$("y1").value, m1 = +$("m1").value;
+    var i0 = idx(y0, m0), i1 = idx(y1, m1), N = a.length;
+    if (i0 < 0 || i0 >= N || i1 < 0 || i1 >= N) {
+      out.innerHTML = '<p class="error" role="alert">No hay datos para ese mes. Elegí fechas dentro del rango disponible.</p>'; return;
+    }
+    var cur = $("cur").value.trim();
+    var f = a[i1] / a[i0];
+    var updated = amt * f, diff = updated - amt, pct = (f - 1) * 100;
+    var power = 100 / f, barW = Math.max(2, Math.min(100, power));
+    var inter = i1 >= 12 ? (a[i1] / a[i1 - 12] - 1) * 100 : null;
+    var fm = function (n) { return cur + "\u00A0" + fmt(n, 2); };
+    var sign = diff >= 0 ? "+" : "−";
+    var nombre = mode === "ipc" ? "IPC" : "CAC · " + SERIE_LABEL[$("serie").value];
+
+    lastText = fm(amt) + " en " + label(y0, m0) + " equivale aproximadamente a " + fm(updated) + " en " + label(y1, m1) +
+      " (" + nombre + ", variación acumulada: " + fmt(pct, 2) + "%).";
+
+    var chart = "", n = Math.abs(i1 - i0) + 1;
+    if (n > 1) {
+      var step = i1 >= i0 ? 1 : -1, vals = [], k;
+      for (k = i0; k !== i1 + step; k += step) vals.push(amt * a[k] / a[i0]);
+      var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals), W = 300, H = 76, pts = [];
+      for (k = 0; k < vals.length; k++) {
+        var x = (k / (vals.length - 1)) * W;
+        var y = H - 4 - ((vals[k] - mn) / ((mx - mn) || 1)) * (H - 8);
+        pts.push(x.toFixed(1) + "," + y.toFixed(1));
+      }
+      chart = '<div class="chart"><div class="chart-lbl"><span>Mes a mes</span><span>' + (y0 === y1 ? "" : y0 + " → " + y1) + "</span></div>" +
+        '<svg viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" role="img" aria-label="Evolución del monto actualizado mes a mes">' +
+        '<polyline points="' + pts.join(" ") + '" fill="none" stroke="var(--res-line)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg></div>';
+    }
+
+    var provTxt = "";
+    if (mode === "cac" && data.cac.provisional) {
+      var prov = data.cac.provisional.indexOf(key(y0, m0)) > -1 || data.cac.provisional.indexOf(key(y1, m1)) > -1;
+      if (prov) provTxt = '<div class="prov">Alguno de los meses elegidos es provisorio: el valor puede cambiar cuando se publique el dato definitivo.</div>';
+    }
+
+    var powerTxt = f >= 1
+      ? "Con el monto original, en " + label(y1, m1) + " comprás el " + fmt(power, 1) + "% de lo que comprabas en " + label(y0, m0) + "."
+      : "Hubo baja en el período: el monto original compra " + fmt(power, 1) + "% de lo que compraba.";
+    if (mode === "cac") powerTxt = "El costo de construcción " + (f >= 1 ? "subió " : "bajó ") + fmt(Math.abs(pct), 1) + "% entre ambos meses.";
+
+    out.innerHTML =
+      '<section class="result" aria-live="polite">' +
+        '<div class="lbl">' + fm(amt) + " en " + label(y0, m0) + " equivale aproximadamente a</div>" +
+        '<div class="big">' + fm(updated) + "</div>" +
+        '<div class="diff">en ' + label(y1, m1) + " (" + sign + " " + fm(Math.abs(diff)) + ") · " + nombre + "</div>" +
+        '<div class="stats">' +
+          "<div>Variación acumulada<b>" + fmt(pct, 2) + "%</b></div>" +
+          "<div>Coeficiente<b>× " + fmt(f, 4) + "</b></div>" +
+          "<div>Interanual a " + MESES[m1 - 1].slice(0, 3) + " " + y1 + "<b>" + (inter === null ? "s/d" : fmt(inter, 1) + "%") + "</b></div>" +
+        "</div>" + chart +
+        '<div class="power">' + powerTxt + '<div class="bar" aria-hidden="true"><i style="width:' + barW + '%"></i></div></div>' +
+        provTxt +
+        '<button class="copy" id="copy" type="button">Copiar resultado</button>' +
+      "</section>";
+
+    $("copy").addEventListener("click", function () {
+      var btn = this;
+      var done = function (t) { btn.textContent = t; setTimeout(function () { btn.textContent = "Copiar resultado"; }, 1600); };
+      try { navigator.clipboard.writeText(lastText).then(function () { done("Copiado"); }, function () { fb(done); }); }
+      catch (e) { fb(done); }
+    });
+  }
+  function fb(done) {
+    try { var ta = document.createElement("textarea"); ta.value = lastText; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); done("Copiado"); }
+    catch (e) { done("No se pudo copiar"); }
+  }
+
+  /* ---------- modo ---------- */
+  function setMode(m) {
+    if (!data[m]) return;
+    var a0 = getAbs(0), a1 = getAbs(1);
+    var had = !!$("y0").options.length;
+    mode = m;
+    $("serie-block").hidden = m !== "cac";
+    ["ipc", "cac"].forEach(function (k) { $("t-" + k).setAttribute("aria-selected", k === m ? "true" : "false"); });
+    setSide(0, had ? a0 : 2019 * 12 + 11);
+    setSide(1, had ? a1 : lastAbs());
+    updateMeta();
+    render();
+  }
+
+  function start() {
+    var any = data.ipc || data.cac;
+    if (!any) {
+      $("out").innerHTML = '<p class="error" role="alert">No pude cargar los datos. Si abriste el archivo directo desde tu computadora, publicalo en un sitio web (por ejemplo GitHub Pages) para que pueda leer la carpeta data/.</p>';
+      return;
+    }
+    $("t-ipc").disabled = !data.ipc; $("t-cac").disabled = !data.cac;
+    document.querySelectorAll(".tabs button").forEach(function (b) {
+      b.addEventListener("click", function () { setMode(b.getAttribute("data-mode")); });
+    });
+    ["0", "1"].forEach(function (s) {
+      $("y" + s).addEventListener("change", function () { fillMonths($("m" + s), +$("y" + s).value, +$("m" + s).value); render(); });
+      $("m" + s).addEventListener("change", render);
+    });
+    $("serie").addEventListener("change", function () { setSide(0, getAbs(0)); setSide(1, getAbs(1)); updateMeta(); render(); });
+    $("amount").addEventListener("input", render);
+    $("cur").addEventListener("input", render);
+    $("swap").addEventListener("click", function () {
+      var a = getAbs(0), b = getAbs(1); setSide(0, b); setSide(1, a); render();
+    });
+    setMode(data.ipc ? "ipc" : "cac");
+  }
+
+  function load(name) {
+    return fetch("data/" + name + ".json", { cache: "no-cache" })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .catch(function () { return null; });
+  }
+
+  if (window.EMBEDDED_DATA) {
+    data.ipc = window.EMBEDDED_DATA.ipc; data.cac = window.EMBEDDED_DATA.cac; start();
+  } else {
+    Promise.all([load("ipc"), load("cac")]).then(function (r) { data.ipc = r[0]; data.cac = r[1]; start(); });
+  }
+})();
+</script>
+</body>
+</html>

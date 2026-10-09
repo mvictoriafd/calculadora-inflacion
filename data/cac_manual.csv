@@ -1,0 +1,7 @@
+# Carga manual del CAC (solo si la planilla de Cifras todavía no trae el mes).
+# Una fila por mes, en orden y sin saltear meses. Los valores son la VARIACIÓN MENSUAL EN %
+# respecto del mes anterior, tal como figura en el informe mensual de Cifras Online.
+# Cuando la planilla de Cifras incorpore ese mes, manda la planilla y esta fila se ignora.
+# Podés usar coma o punto decimal. Ejemplo (borrá el # para usarlo):
+# 2026-08,1.8,1.2,2.5
+mes,general,materiales,mano_obra
