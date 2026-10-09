@@ -1,0 +1,66 @@
+name: Actualizar índices y publicar
+
+on:
+  schedule:
+    - cron: "30 9 * * *"      # todos los días, 06:30 hora de Argentina (09:30 UTC)
+  workflow_dispatch:           # botón "Run workflow" para correrlo a mano
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  actualizar-y-publicar:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install xlrd openpyxl
+
+      - name: Actualizar datos (IPC y CAC)
+        id: update
+        continue-on-error: true      # si falla una fuente, igual se publica lo último que anduvo
+        run: python scripts/update_data.py
+
+      - name: Guardar los datos nuevos en el repositorio
+        run: |
+          git config user.name "actualizador-indices"
+          git config user.email "actions@users.noreply.github.com"
+          git add data
+          if ! git diff --cached --quiet; then
+            git commit -m "Actualizar datos ($(date -u +%F))"
+            git push
+          fi
+
+      - name: Armar el sitio
+        run: |
+          mkdir _site
+          cp index.html _site/
+          cp -r data _site/data
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Avisar si falló alguna fuente
+        if: steps.update.outcome == 'failure'
+        run: |
+          echo "Falló la actualización de al menos una fuente (mirá el paso 'Actualizar datos')."
+          exit 1
