@@ -246,9 +246,9 @@
     }
 
     var provTxt = "";
-    if (mode === "cac" && data.cac.provisional) {
-      var prov = data.cac.provisional.indexOf(key(y0, m0)) > -1 || data.cac.provisional.indexOf(key(y1, m1)) > -1;
-      if (prov) provTxt = '<div class="prov">Alguno de los meses elegidos es provisorio: el valor puede cambiar cuando se publique el dato definitivo.</div>';
+    if (data[mode].provisional) {
+      var prov = data[mode].provisional.indexOf(key(y0, m0)) > -1 || data[mode].provisional.indexOf(key(y1, m1)) > -1;
+      if (prov) provTxt = '<div class="prov">Alguno de los meses elegidos es provisorio: ' + (mode === "ipc" ? "se calculó con la variación mensual publicada por el INDEC y se ajusta solo cuando se carga el índice oficial." : "el valor puede cambiar cuando se publique el dato definitivo.") + '</div>';
     }
 
     var powerTxt = f >= 1

@@ -1,0 +1,7 @@
+# Carga manual del IPC (solo si la API de datos.gob.ar todavía no trae el mes).
+# Una fila por mes, en orden y sin saltear meses. 'variacion' es la variación MENSUAL del
+# IPC nivel general nacional, en %, tal como la informa el INDEC. Coma o punto decimal.
+# Cuando la API incorpora el mes, manda la API y esta fila se ignora.
+# Si el INDEC informa dos decimales (por ejemplo 1,93), usalos: es más preciso que 1,9.
+mes,variacion
+2026-09,1.9
